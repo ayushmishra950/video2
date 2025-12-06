@@ -1,341 +1,28 @@
 
 
+// // WhatsAppChatVideo.jsx
 // import React, { useState, useEffect, useRef } from "react";
 // import { io } from "socket.io-client";
 // import SimplePeer from "simple-peer";
+// import { FaVideo, FaPhoneSlash } from "react-icons/fa";
 
-// // Socket.IO client
+// // Connect to Socket.IO server
 // const socket = io("http://localhost:5000");
 
-// const WhatsAppChatWithVideo = () => {
-//   // --- Chat states ---
+// const WhatsAppChatVideo = () => {
+//   // Chat states
 //   const [messages, setMessages] = useState([]);
 //   const [userInput, setUserInput] = useState("");
 //   const [username, setUsername] = useState("");
 
-//   // --- Video states ---
-//   const myVideoRef = useRef();
-//   const [remoteVideos, setRemoteVideos] = useState([]); // [{id, stream}]
-//   const peersRef = useRef({}); // { peerId: SimplePeer instance }
+//   // Video call states
+//   const [inCall, setInCall] = useState(false);
+//   const myVideoRef = useRef(null);
+//   const [remoteVideos, setRemoteVideos] = useState([]); // {id, stream}
+//   const peersRef = useRef({}); // { peerId: SimplePeer }
 //   const [stream, setStream] = useState(null);
 
 //   const chatEndRef = useRef(null);
-
-//   const [clientId, setClientId] = useState("");
-
-//   // Ask username & save client ID from server
-//   useEffect(() => {
-//     let name = prompt("Enter your name:");
-//     if (!name) name = "Guest";
-//     setUsername(name);
-
-//     socket.on("connect", () => {
-//       setClientId(socket.id);
-//     });
-//   }, []);
-
-//   // --- Receive chat messages ---
-//   useEffect(() => {
-//     const handleChat = (msg) => setMessages(prev => [...prev, msg]);
-//     socket.on("chat", handleChat);
-//     return () => socket.off("chat", handleChat);
-//   }, []);
-
-//   // Auto scroll chat
-//   useEffect(() => {
-//     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-//   }, [messages]);
-
-//   // --- Setup Video Call ---
-//   useEffect(() => {
-//     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-//       .then(mediaStream => {
-//         setStream(mediaStream);
-//         if (myVideoRef.current) myVideoRef.current.srcObject = mediaStream;
-
-//         // Inform server we are ready
-//         socket.emit("ready-for-call");
-
-//         // When a new user joins, create peer (initiator)
-//         socket.on("new-user", (newUserId) => {
-//           const peer = new SimplePeer({
-//             initiator: true,
-//             trickle: false,
-//             stream: mediaStream
-//           });
-
-//           peer.on("signal", signal => {
-//             socket.emit("signal", { signal, to: newUserId });
-//           });
-
-//           peer.on("stream", userStream => {
-//             setRemoteVideos(prev => [...prev, { id: newUserId, stream: userStream }]);
-//           });
-
-//           peersRef.current[newUserId] = peer;
-//         });
-
-//         // When receiving signaling data
-//         socket.on("signal", ({ signal, from }) => {
-//           if (!peersRef.current[from]) {
-//             const peer = new SimplePeer({
-//               initiator: false,
-//               trickle: false,
-//               stream: mediaStream
-//             });
-
-//             peer.on("signal", signalData => {
-//               socket.emit("signal", { signal: signalData, to: from });
-//             });
-
-//             peer.on("stream", userStream => {
-//               setRemoteVideos(prev => [...prev, { id: from, stream: userStream }]);
-//             });
-
-//             peersRef.current[from] = peer;
-//             peer.signal(signal);
-//           } else {
-//             peersRef.current[from].signal(signal);
-//           }
-//         });
-
-//         // Handle user disconnect
-//         socket.on("user-left", (id) => {
-//           if (peersRef.current[id]) {
-//             peersRef.current[id].destroy();
-//             delete peersRef.current[id];
-//           }
-//           setRemoteVideos(prev => prev.filter(v => v.id !== id));
-//         });
-
-//       })
-//       .catch(err => console.error("Error accessing media devices:", err));
-//   }, []);
-
-//   // --- Send chat message ---
-//   const sendMessage = () => {
-//     if (!userInput.trim()) return;
-
-//     const msg = {
-//       user: username,
-//       text: userInput,
-//       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-//     };
-
-//     socket.emit("chatMessage", msg);
-//     setUserInput("");
-//   };
-
-//   return (
-//     <div style={styles.container}>
-//       {/* Header */}
-//       <div style={styles.header}>
-//         <h3 style={{ color: "white", margin: 0 }}>WhatsApp Chat + Video</h3>
-//         <small style={{ color: "#e0ffe0" }}>Logged in as: {username}</small>
-//       </div>
-
-//       {/* Video Section */}
-//       <div style={styles.videoContainer}>
-//         <video ref={myVideoRef} autoPlay playsInline muted style={styles.video} />
-//         {remoteVideos.map(v => (
-//           <video
-//             key={v.id}
-//             ref={el => { if (el) el.srcObject = v.stream; }}
-//             autoPlay
-//             playsInline
-//             style={styles.video}
-//           />
-//         ))}
-//       </div>
-
-//       {/* Chat area */}
-//       <div style={styles.chatBox}>
-//         {messages.map((msg, index) => (
-//           <div
-//             key={index}
-//             style={{
-//               ...styles.messageBubble,
-//               alignSelf: msg.user === username ? "flex-end" : "flex-start",
-//               backgroundColor: msg.user === username ? "#dcf8c6" : "white",
-//             }}
-//           >
-//             <div style={styles.msgUser}>{msg.user}</div>
-//             <div>{msg.text}</div>
-//             <div style={styles.msgTime}>{msg.time}</div>
-//           </div>
-//         ))}
-//         <div ref={chatEndRef}></div>
-//       </div>
-
-//       {/* Input */}
-//       <div style={styles.inputArea}>
-//         <input
-//           type="text"
-//           placeholder="Type a message"
-//           value={userInput}
-//           onChange={(e) => setUserInput(e.target.value)}
-//           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-//           style={styles.input}
-//         />
-//         <button onClick={sendMessage} style={styles.sendBtn}>Send</button>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default WhatsAppChatWithVideo;
-
-// // --------------------
-// // STYLES
-// // --------------------
-// const styles = {
-//   container: {
-//     width: "450px",
-//     height: "750px",
-//     margin: "20px auto",
-//     display: "flex",
-//     flexDirection: "column",
-//     border: "1px solid #ddd",
-//     borderRadius: "10px",
-//     overflow: "hidden",
-//     fontFamily: "Arial",
-//     backgroundColor: "#f0f0f0",
-//   },
-
-//   header: {
-//     backgroundColor: "#075E54",
-//     padding: "12px",
-//     textAlign: "center",
-//   },
-
-//   videoContainer: {
-//     display: "flex",
-//     justifyContent: "space-around",
-//     padding: "10px",
-//     gap: "10px",
-//     flexWrap: "wrap",
-//   },
-
-//   video: {
-//     width: "200px",
-//     height: "150px",
-//     border: "1px solid #ccc",
-//     borderRadius: "5px",
-//     backgroundColor: "black",
-//   },
-
-//   chatBox: {
-//     flex: 1,
-//     padding: "10px",
-//     overflowY: "auto",
-//     display: "flex",
-//     flexDirection: "column",
-//     gap: "8px",
-//     backgroundColor: "#e5ddd5",
-//     borderTop: "1px solid #ccc",
-//   },
-
-//   messageBubble: {
-//     maxWidth: "70%",
-//     padding: "10px",
-//     borderRadius: "10px",
-//     boxShadow: "0px 1px 2px rgba(0,0,0,0.2)",
-//   },
-
-//   msgUser: {
-//     fontSize: "12px",
-//     color: "#075E54",
-//     marginBottom: "3px",
-//   },
-
-//   msgTime: {
-//     fontSize: "10px",
-//     textAlign: "right",
-//     color: "#555",
-//     marginTop: "3px",
-//   },
-
-//   inputArea: {
-//     padding: "10px",
-//     display: "flex",
-//     gap: "8px",
-//     backgroundColor: "#eee",
-//   },
-
-//   input: {
-//     flex: 1,
-//     padding: "10px",
-//     borderRadius: "20px",
-//     border: "1px solid #ccc",
-//   },
-
-//   sendBtn: {
-//     padding: "10px 15px",
-//     backgroundColor: "#25D366",
-//     border: "none",
-//     borderRadius: "20px",
-//     color: "white",
-//     cursor: "pointer",
-//   },
-// };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// import React, { useState, useEffect, useRef } from "react";
-// import { io } from "socket.io-client";
-// import SimplePeer from "simple-peer";
-
-// // Socket.IO client
-// const socket = io("http://localhost:5000");
-
-// const WhatsAppChatWithVideo = () => {
-//   // CHAT states
-//   const [messages, setMessages] = useState([]);
-//   const [userInput, setUserInput] = useState("");
-//   const [username, setUsername] = useState("");
-//   const chatEndRef = useRef(null);
-
-//   // VIDEO states
-//   const [inCall, setInCall] = useState(false); // <== NEW (switch between Chat & Call screen)
-//   const myVideoRef = useRef();
-//   const [remoteVideos, setRemoteVideos] = useState([]);
-//   const peersRef = useRef({});
-//   const [stream, setStream] = useState(null);
-
 //   const [clientId, setClientId] = useState("");
 
 //   // Ask username
@@ -344,9 +31,7 @@
 //     if (!name) name = "Guest";
 //     setUsername(name);
 
-//     socket.on("connect", () => {
-//       setClientId(socket.id);
-//     });
+//     socket.on("connect", () => setClientId(socket.id));
 //   }, []);
 
 //   // Receive chat messages
@@ -356,27 +41,33 @@
 //     return () => socket.off("chat", handleChat);
 //   }, []);
 
-//   // Auto scroll
+//   // Auto scroll chat
 //   useEffect(() => {
 //     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
 //   }, [messages]);
 
-//   // VIDEO CALL LOGIC
-//   useEffect(() => {
-//     if (!inCall) return; // <== Only setup video when in call
-
-//     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+//   // Start video call
+//   const startCall = () => {
+//     setInCall(true);
+//     navigator.mediaDevices?.getUserMedia({ video: true, audio: true })
 //       .then((mediaStream) => {
 //         setStream(mediaStream);
 //         if (myVideoRef.current) myVideoRef.current.srcObject = mediaStream;
 
 //         socket.emit("ready-for-call");
 
+//         // New user joined
 //         socket.on("new-user", (newUserId) => {
 //           const peer = new SimplePeer({
 //             initiator: true,
 //             trickle: false,
 //             stream: mediaStream,
+//             config: {
+//       iceServers: [
+//         { urls: "stun:stun.l.google.com:19302" },
+//           { urls: "turn:turnserver.example.com", username: "user", credential: "pass" }
+//       ]
+//     }
 //           });
 
 //           peer.on("signal", (signal) => {
@@ -390,12 +81,19 @@
 //           peersRef.current[newUserId] = peer;
 //         });
 
+//         // Receive signal
 //         socket.on("signal", ({ signal, from }) => {
 //           if (!peersRef.current[from]) {
 //             const peer = new SimplePeer({
 //               initiator: false,
 //               trickle: false,
 //               stream: mediaStream,
+//               config: {
+//       iceServers: [
+//         { urls: "stun:stun.l.google.com:19302" },
+//           { urls: "turn:turnserver.example.com", username: "user", credential: "pass" }
+//       ]
+//     }
 //             });
 
 //             peer.on("signal", (signalData) => {
@@ -413,6 +111,7 @@
 //           }
 //         });
 
+//         // User left
 //         socket.on("user-left", (id) => {
 //           if (peersRef.current[id]) {
 //             peersRef.current[id].destroy();
@@ -421,23 +120,19 @@
 //           setRemoteVideos((prev) => prev.filter((v) => v.id !== id));
 //         });
 //       })
-//       .catch((err) => console.error("Media Error:", err));
-//   }, [inCall]);
+//       .catch((err) => console.error(err));
+//   };
 
-
-//   // End Call Function
+//   // End call
 //   const endCall = () => {
 //     setInCall(false);
-
-//     // Stop streams
-//     if (stream) {
-//       stream.getTracks().forEach((t) => t.stop());
-//     }
-
-//     // Destroy peers
 //     Object.values(peersRef.current).forEach((p) => p.destroy());
 //     peersRef.current = {};
 //     setRemoteVideos([]);
+//     if (stream) {
+//       stream.getTracks().forEach((track) => track.stop());
+//       setStream(null);
+//     }
 //   };
 
 //   // Send chat message
@@ -454,50 +149,42 @@
 //     setUserInput("");
 //   };
 
-//   // ---------------------------------------------
-//   // RENDER UI (Chat Screen OR Video Screen)
-//   // ---------------------------------------------
-
-//   // === If video call is ON ===
+//   // ----------------- RENDER -----------------
 //   if (inCall) {
 //     return (
-//       <div style={styles.callScreen}>
-//         <div style={styles.callVideos}>
-//           <video ref={myVideoRef} autoPlay playsInline muted style={styles.callVideo} />
-
+//       <div style={styles.container}>
+//         {/* Video Call */}
+//         <div style={styles.videoContainer}>
+//           <video ref={myVideoRef} autoPlay playsInline muted style={styles.video} />
 //           {remoteVideos.map((v) => (
 //             <video
 //               key={v.id}
+//               ref={(el) => el && (el.srcObject = v.stream)}
 //               autoPlay
 //               playsInline
-//               ref={(el) => el && (el.srcObject = v.stream)}
-//               style={styles.callVideo}
+//               style={styles.video}
 //             />
 //           ))}
 //         </div>
 
-//         <button onClick={endCall} style={styles.endCallBtn}>End Call</button>
+//         {/* End call button */}
+//         <button style={styles.endCallBtn} onClick={endCall}>
+//           <FaPhoneSlash /> End Call
+//         </button>
 //       </div>
 //     );
 //   }
 
-//   // === Default: CHAT SCREEN ===
 //   return (
 //     <div style={styles.container}>
 //       {/* Header */}
 //       <div style={styles.header}>
-//         <h3 style={{ color: "white", margin: 0 }}>{username}</h3>
-
-//         {/* Video Call Button */}
-//         <button
-//           onClick={() => setInCall(true)}
-//           style={styles.videoIcon}
-//         >
-//           📹
-//         </button>
+//         <h3 style={{ color: "white", margin: 0 }}>WhatsApp Chat</h3>
+//         <small style={{ color: "#e0ffe0" }}>Logged in as: {username}</small>
+//         <FaVideo style={styles.videoIcon} onClick={startCall} title="Start Video Call" />
 //       </div>
 
-//       {/* Chat List */}
+//       {/* Chat Area */}
 //       <div style={styles.chatBox}>
 //         {messages.map((msg, index) => (
 //           <div
@@ -516,45 +203,27 @@
 //         <div ref={chatEndRef}></div>
 //       </div>
 
-//       {/* Input */}
+//       {/* Input Area */}
 //       <div style={styles.inputArea}>
 //         <input
 //           type="text"
-//           placeholder="Message"
+//           placeholder="Type a message"
 //           value={userInput}
 //           onChange={(e) => setUserInput(e.target.value)}
 //           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
 //           style={styles.input}
 //         />
-//         <button onClick={sendMessage} style={styles.sendBtn}>Send</button>
+//         <button onClick={sendMessage} style={styles.sendBtn}>
+//           Send
+//         </button>
 //       </div>
 //     </div>
 //   );
 // };
 
-// export default WhatsAppChatWithVideo;
+// export default WhatsAppChatVideo;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// // ------------------- STYLES -------------------
 // const styles = {
 //   container: {
 //     width: "450px",
@@ -562,28 +231,56 @@
 //     margin: "20px auto",
 //     display: "flex",
 //     flexDirection: "column",
-//     backgroundColor: "#e5ddd5",
+//     border: "1px solid #ddd",
 //     borderRadius: "10px",
 //     overflow: "hidden",
-//     border: "1px solid #ccc",
+//     fontFamily: "Arial",
+//     backgroundColor: "#f0f0f0",
 //   },
-
 //   header: {
 //     backgroundColor: "#075E54",
-//     padding: "15px 18px",
-//     display: "flex",
-//     justifyContent: "space-between",
-//     alignItems: "center",
+//     padding: "12px",
+//     textAlign: "center",
+//     position: "relative",
 //   },
-
 //   videoIcon: {
-//     fontSize: "22px",
+//     position: "absolute",
+//     right: "10px",
+//     top: "12px",
 //     color: "white",
+//     fontSize: "20px",
 //     cursor: "pointer",
-//     border: "none",
-//     background: "none",
 //   },
-
+//   videoContainer: {
+//     display: "flex",
+//     justifyContent: "center",
+//     alignItems: "center",
+//     gap: "10px",
+//     flexWrap: "wrap",
+//     padding: "10px",
+//     flex: 1,
+//     backgroundColor: "#000",
+//   },
+//   video: {
+//     width: "200px",
+//     height: "150px",
+//     border: "1px solid #ccc",
+//     borderRadius: "5px",
+//     backgroundColor: "black",
+//   },
+//   endCallBtn: {
+//     backgroundColor: "#f44336",
+//     color: "white",
+//     padding: "10px",
+//     margin: "10px auto",
+//     border: "none",
+//     borderRadius: "10px",
+//     cursor: "pointer",
+//     display: "flex",
+//     alignItems: "center",
+//     gap: "5px",
+//     fontSize: "16px",
+//   },
 //   chatBox: {
 //     flex: 1,
 //     padding: "10px",
@@ -591,42 +288,38 @@
 //     display: "flex",
 //     flexDirection: "column",
 //     gap: "8px",
+//     backgroundColor: "#e5ddd5",
+//     borderTop: "1px solid #ccc",
 //   },
-
 //   messageBubble: {
 //     maxWidth: "70%",
 //     padding: "10px",
 //     borderRadius: "10px",
 //     boxShadow: "0px 1px 2px rgba(0,0,0,0.2)",
 //   },
-
 //   msgUser: {
 //     fontSize: "12px",
 //     color: "#075E54",
 //     marginBottom: "3px",
 //   },
-
 //   msgTime: {
 //     fontSize: "10px",
 //     textAlign: "right",
 //     color: "#555",
 //     marginTop: "3px",
 //   },
-
 //   inputArea: {
 //     padding: "10px",
 //     display: "flex",
 //     gap: "8px",
 //     backgroundColor: "#eee",
 //   },
-
 //   input: {
 //     flex: 1,
 //     padding: "10px",
 //     borderRadius: "20px",
 //     border: "1px solid #ccc",
 //   },
-
 //   sendBtn: {
 //     padding: "10px 15px",
 //     backgroundColor: "#25D366",
@@ -635,47 +328,6 @@
 //     color: "white",
 //     cursor: "pointer",
 //   },
-
-//   /* --- CALL SCREEN --- */
-//   callScreen: {
-//     width: "450px",
-//     height: "750px",
-//     margin: "20px auto",
-//     backgroundColor: "black",
-//     display: "flex",
-//     flexDirection: "column",
-//     justifyContent: "space-between",
-//     padding: "10px",
-//     borderRadius: "10px",
-//     overflow: "hidden",
-//   },
-
-//   callVideos: {
-//     display: "flex",
-//     flexWrap: "wrap",
-//     justifyContent: "center",
-//     gap: "10px",
-//     marginTop: "20px",
-//   },
-
-//   callVideo: {
-//     width: "220px",
-//     height: "160px",
-//     backgroundColor: "black",
-//     borderRadius: "10px",
-//   },
-
-//   endCallBtn: {
-//     backgroundColor: "red",
-//     padding: "14px",
-//     borderRadius: "50px",
-//     border: "none",
-//     color: "white",
-//     fontSize: "16px",
-//     cursor: "pointer",
-//     margin: "0 auto 20px",
-//     width: "120px",
-//   },
 // };
 
 
@@ -714,66 +366,37 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// WhatsAppChatVideo.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 import SimplePeer from "simple-peer";
 import { FaVideo, FaPhoneSlash } from "react-icons/fa";
 
-// Connect to Socket.IO server
-const socket = io("http://192.168.32.132:5000");
+const socket = io("http://192.168.1.26:5000");
 
 const WhatsAppChatVideo = () => {
-  // Chat states
   const [messages, setMessages] = useState([]);
   const [userInput, setUserInput] = useState("");
   const [username, setUsername] = useState("");
-
-  // Video call states
   const [inCall, setInCall] = useState(false);
-  const myVideoRef = useRef(null);
-  const [remoteVideos, setRemoteVideos] = useState([]); // {id, stream}
-  const peersRef = useRef({}); // { peerId: SimplePeer }
   const [stream, setStream] = useState(null);
-
+  const [remoteVideos, setRemoteVideos] = useState([]);
+  const peersRef = useRef({});
+  const myVideoRef = useRef(null);
   const chatEndRef = useRef(null);
-  const [clientId, setClientId] = useState("");
+  const [meetingId, setMeetingId] = useState("");
 
   // Ask username
   useEffect(() => {
     let name = prompt("Enter your name:");
     if (!name) name = "Guest";
     setUsername(name);
-
-    socket.on("connect", () => setClientId(socket.id));
   }, []);
 
-  // Receive chat messages
+  // Chat receiver
   useEffect(() => {
-    const handleChat = (msg) => setMessages((prev) => [...prev, msg]);
-    socket.on("chat", handleChat);
-    return () => socket.off("chat", handleChat);
+    socket.on("chat", (msg) => {
+      setMessages((prev) => [...prev, msg]);
+    });
   }, []);
 
   // Auto scroll chat
@@ -781,91 +404,126 @@ const WhatsAppChatVideo = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Start video call
-  const startCall = () => {
-    setInCall(true);
-    navigator.mediaDevices?.getUserMedia({ video: true, audio: true })
-      .then((mediaStream) => {
-        setStream(mediaStream);
-        if (myVideoRef.current) myVideoRef.current.srcObject = mediaStream;
+  // -------------------------------------
+  // HANDLE WEBRTC EVENTS ONCE
+  // -------------------------------------
+  useEffect(() => {
+    if (!meetingId || !stream) return;
 
-        socket.emit("ready-for-call");
+    const handleNewUser = ({ newUserId, meeting }) => {
+      if (meeting !== meetingId) return;
+      createPeer(newUserId, stream, true);
+    };
 
-        // New user joined
-        socket.on("new-user", (newUserId) => {
-          const peer = new SimplePeer({
-            initiator: true,
-            trickle: false,
-            stream: mediaStream,
-            config: {
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-          { urls: "turn:turnserver.example.com", username: "user", credential: "pass" }
-      ]
+    const handleSignal = ({ signal, from, meeting }) => {
+      if (meeting !== meetingId) return;
+
+      if (!peersRef.current[from]) {
+        createPeer(from, stream, false, signal);
+      } else {
+        peersRef.current[from].signal(signal);
+      }
+    };
+
+    const handleUserLeft = (id) => {
+      if (peersRef.current[id]) {
+        peersRef.current[id].destroy();
+        delete peersRef.current[id];
+      }
+      setRemoteVideos((prev) => prev.filter((v) => v.id !== id));
+    };
+
+    socket.on("new-user", handleNewUser);
+    socket.on("signal", handleSignal);
+    socket.on("user-left", handleUserLeft);
+
+    return () => {
+      socket.off("new-user", handleNewUser);
+      socket.off("signal", handleSignal);
+      socket.off("user-left", handleUserLeft);
+    };
+  }, [meetingId, stream]);
+
+  // -------------------------------------
+  // Start Call (with meeting ID)
+  // -------------------------------------
+  const handleVideoClick = () => {
+    const type = prompt("Type 'create' to create meeting or 'join' to join:");
+
+    if (type === "create") {
+      const newId =
+        prompt("Enter meeting ID:") || Math.random().toString(36).slice(2, 8);
+      setMeetingId(newId);
+      alert("Meeting created! Share this ID: " + newId);
+      startCall(newId);
+    } else if (type === "join") {
+      const joinId = prompt("Enter meeting ID:");
+      if (!joinId) return alert("Enter meeting ID!");
+      setMeetingId(joinId);
+      startCall(joinId);
     }
-          });
-
-          peer.on("signal", (signal) => {
-            socket.emit("signal", { signal, to: newUserId });
-          });
-
-          peer.on("stream", (userStream) => {
-            setRemoteVideos((prev) => [...prev, { id: newUserId, stream: userStream }]);
-          });
-
-          peersRef.current[newUserId] = peer;
-        });
-
-        // Receive signal
-        socket.on("signal", ({ signal, from }) => {
-          if (!peersRef.current[from]) {
-            const peer = new SimplePeer({
-              initiator: false,
-              trickle: false,
-              stream: mediaStream,
-              config: {
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-          { urls: "turn:turnserver.example.com", username: "user", credential: "pass" }
-      ]
-    }
-            });
-
-            peer.on("signal", (signalData) => {
-              socket.emit("signal", { signal: signalData, to: from });
-            });
-
-            peer.on("stream", (userStream) => {
-              setRemoteVideos((prev) => [...prev, { id: from, stream: userStream }]);
-            });
-
-            peersRef.current[from] = peer;
-            peer.signal(signal);
-          } else {
-            peersRef.current[from].signal(signal);
-          }
-        });
-
-        // User left
-        socket.on("user-left", (id) => {
-          if (peersRef.current[id]) {
-            peersRef.current[id].destroy();
-            delete peersRef.current[id];
-          }
-          setRemoteVideos((prev) => prev.filter((v) => v.id !== id));
-        });
-      })
-      .catch((err) => console.error(err));
   };
 
-  // End call
+  const startCall = async (meetId) => {
+    setInCall(true);
+
+    const mediaStream = await navigator.mediaDevices?.getUserMedia({
+      video: true,
+      audio: true,
+    });
+
+    setStream(mediaStream);
+    if (myVideoRef.current) myVideoRef.current.srcObject = mediaStream;
+
+    socket.emit("ready-for-call", { meetingId: meetId });
+  };
+
+  // -------------------------------------
+  // PEER CREATION
+  // -------------------------------------
+  const createPeer = (peerId, mediaStream, initiator, incomingSignal = null) => {
+    const peer = new SimplePeer({
+      initiator,
+      trickle: false,
+      stream: mediaStream,
+      config: {
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          {
+            urls: "turn:turnserver.example.com",
+            username: "user",
+            credential: "pass",
+          },
+        ],
+      },
+    });
+
+    peer.on("signal", (signalData) => {
+      socket.emit("signal", {
+        signal: signalData,
+        to: peerId,
+        meeting: meetingId,
+      });
+    });
+
+    peer.on("stream", (userStream) => {
+      setRemoteVideos((prev) => [...prev, { id: peerId, stream: userStream }]);
+    });
+
+    if (incomingSignal) peer.signal(incomingSignal);
+
+    peersRef.current[peerId] = peer;
+  };
+
+  // End Call
   const endCall = () => {
     setInCall(false);
     Object.values(peersRef.current).forEach((p) => p.destroy());
     peersRef.current = {};
     setRemoteVideos([]);
+
     if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
+      stream.getTracks().forEach((t) => t.stop());
       setStream(null);
     }
   };
@@ -873,37 +531,39 @@ const WhatsAppChatVideo = () => {
   // Send chat message
   const sendMessage = () => {
     if (!userInput.trim()) return;
-
     const msg = {
       user: username,
       text: userInput,
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      time: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
     };
-
     socket.emit("chatMessage", msg);
     setUserInput("");
   };
 
-  // ----------------- RENDER -----------------
+  // -------------------------------------
+  // UI
+  // -------------------------------------
   if (inCall) {
     return (
       <div style={styles.container}>
-        {/* Video Call */}
         <div style={styles.videoContainer}>
-          <video ref={myVideoRef} autoPlay playsInline muted style={styles.video} />
+          <video ref={myVideoRef} autoPlay muted playsInline style={styles.video} />
+
           {remoteVideos.map((v) => (
             <video
               key={v.id}
-              ref={(el) => el && (el.srcObject = v.stream)}
               autoPlay
               playsInline
               style={styles.video}
+              ref={(el) => el && (el.srcObject = v.stream)}
             />
           ))}
         </div>
 
-        {/* End call button */}
-        <button style={styles.endCallBtn} onClick={endCall}>
+        <button onClick={endCall} style={styles.endCallBtn}>
           <FaPhoneSlash /> End Call
         </button>
       </div>
@@ -912,43 +572,39 @@ const WhatsAppChatVideo = () => {
 
   return (
     <div style={styles.container}>
-      {/* Header */}
       <div style={styles.header}>
-        <h3 style={{ color: "white", margin: 0 }}>WhatsApp Chat</h3>
+        <h3 style={{ color: "white" }}>WhatsApp Chat</h3>
         <small style={{ color: "#e0ffe0" }}>Logged in as: {username}</small>
-        <FaVideo style={styles.videoIcon} onClick={startCall} title="Start Video Call" />
+        <FaVideo style={styles.videoIcon} onClick={handleVideoClick} />
       </div>
 
-      {/* Chat Area */}
       <div style={styles.chatBox}>
-        {messages.map((msg, index) => (
+        {messages.map((msg, i) => (
           <div
-            key={index}
+            key={i}
             style={{
               ...styles.messageBubble,
               alignSelf: msg.user === username ? "flex-end" : "flex-start",
-              backgroundColor: msg.user === username ? "#dcf8c6" : "white",
+              background: msg.user === username ? "#dcf8c6" : "white",
             }}
           >
-            <div style={styles.msgUser}>{msg.user}</div>
+            <strong>{msg.user}</strong>
             <div>{msg.text}</div>
-            <div style={styles.msgTime}>{msg.time}</div>
+            <small>{msg.time}</small>
           </div>
         ))}
-        <div ref={chatEndRef}></div>
+        <div ref={chatEndRef} />
       </div>
 
-      {/* Input Area */}
       <div style={styles.inputArea}>
         <input
-          type="text"
-          placeholder="Type a message"
+          style={styles.input}
           value={userInput}
           onChange={(e) => setUserInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          style={styles.input}
+          placeholder="Type message..."
         />
-        <button onClick={sendMessage} style={styles.sendBtn}>
+        <button style={styles.sendBtn} onClick={sendMessage}>
           Send
         </button>
       </div>
@@ -958,22 +614,21 @@ const WhatsAppChatVideo = () => {
 
 export default WhatsAppChatVideo;
 
-// ------------------- STYLES -------------------
+// Styles
 const styles = {
   container: {
     width: "450px",
     height: "750px",
+    background: "#f0f0f0",
     margin: "20px auto",
+    borderRadius: "10px",
     display: "flex",
     flexDirection: "column",
-    border: "1px solid #ddd",
-    borderRadius: "10px",
     overflow: "hidden",
-    fontFamily: "Arial",
-    backgroundColor: "#f0f0f0",
+    border: "1px solid #ddd",
   },
   header: {
-    backgroundColor: "#075E54",
+    background: "#075E54",
     padding: "12px",
     textAlign: "center",
     position: "relative",
@@ -987,80 +642,53 @@ const styles = {
     cursor: "pointer",
   },
   videoContainer: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: "10px",
-    flexWrap: "wrap",
-    padding: "10px",
     flex: 1,
-    backgroundColor: "#000",
+    background: "#000",
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "10px",
+    justifyContent: "center",
+    padding: "10px",
   },
   video: {
     width: "200px",
     height: "150px",
-    border: "1px solid #ccc",
-    borderRadius: "5px",
-    backgroundColor: "black",
+    background: "black",
+    borderRadius: "10px",
   },
   endCallBtn: {
-    backgroundColor: "#f44336",
+    background: "red",
     color: "white",
     padding: "10px",
-    margin: "10px auto",
-    border: "none",
-    borderRadius: "10px",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    gap: "5px",
-    fontSize: "16px",
+    margin: "10px",
+    borderRadius: "12px",
   },
   chatBox: {
     flex: 1,
     padding: "10px",
     overflowY: "auto",
-    display: "flex",
-    flexDirection: "column",
-    gap: "8px",
-    backgroundColor: "#e5ddd5",
-    borderTop: "1px solid #ccc",
   },
   messageBubble: {
-    maxWidth: "70%",
     padding: "10px",
     borderRadius: "10px",
-    boxShadow: "0px 1px 2px rgba(0,0,0,0.2)",
-  },
-  msgUser: {
-    fontSize: "12px",
-    color: "#075E54",
-    marginBottom: "3px",
-  },
-  msgTime: {
-    fontSize: "10px",
-    textAlign: "right",
-    color: "#555",
-    marginTop: "3px",
+    marginBottom: "10px",
+    maxWidth: "70%",
   },
   inputArea: {
     padding: "10px",
+    background: "#eee",
     display: "flex",
-    gap: "8px",
-    backgroundColor: "#eee",
+    gap: "10px",
   },
   input: {
     flex: 1,
     padding: "10px",
     borderRadius: "20px",
-    border: "1px solid #ccc",
   },
   sendBtn: {
+    background: "#25D366",
     padding: "10px 15px",
-    backgroundColor: "#25D366",
-    border: "none",
     borderRadius: "20px",
     color: "white",
-    cursor: "pointer",
   },
 };
