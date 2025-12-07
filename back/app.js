@@ -1,200 +1,72 @@
 
-
-// const express = require('express');
-// const http = require('http');
-// const cors = require('cors');
-// const { Server } = require('socket.io');
+// y complete or sahi code hai for video call and chat with multiple people
 
 
 
-// // Express app setup
+// const express = require("express");
+// const http = require("http");
+// const cors = require("cors");
+// const { Server } = require("socket.io");
+
 // const app = express();
-// const port = 5000;
-// app.use(express.json());
 // app.use(cors());
+// app.use(express.json());
 
-// // HTTP server (required for Socket.IO)
 // const server = http.createServer(app);
 
-// // Socket.IO setup
 // const io = new Server(server, {
 //   cors: {
 //     origin: "*",
-//     methods: ["GET", "POST"]
-//   }
+//     methods: ["GET", "POST"],
+//   },
 // });
-
-// // Store connected clients for video call
-// let clients = [];
 
 // io.on("connection", (socket) => {
 //   console.log("User connected:", socket.id);
-//   clients.push(socket.id);
 
-//   // -----------------------
-//   // Video Call Signaling
-//   // -----------------------
-//   socket.on("ready-for-call", () => {
-//     if (clients.length === 2) {
-//       clients.forEach(clientId => {
-//         const otherId = clients.find(id => id !== clientId);
-//         io.to(clientId).emit("start-call", { initiator: clients[0], peerId: otherId });
-//       });
-//     }
+//   socket.meetingId = null;
+
+//   // USER JOINS MEETING
+//   socket.on("ready-for-call", ({ meetingId }) => {
+//     socket.meetingId = meetingId;
+//     socket.join(meetingId);
+
+//     console.log(`User ${socket.id} joined meeting ${meetingId}`);
+
+//     // Notify others in room
+//     socket.to(meetingId).emit("new-user", {
+//       newUserId: socket.id,
+//       meeting: meetingId,
+//     });
 //   });
 
-//   socket.on("signal", ({ signal, to }) => {
-//     io.to(to).emit("signal", { signal });
+//   // HANDLE SIGNAL
+//   socket.on("signal", ({ signal, to, meeting }) => {
+//     io.to(to).emit("signal", {
+//       signal,
+//       from: socket.id,
+//       meeting,
+//     });
 //   });
 
-//   // -----------------------
-//   // Chat Functionality
-//   // -----------------------
+//   // CHAT
 //   socket.on("chatMessage", (msg) => {
-//     // Broadcast to all clients
 //     io.emit("chat", msg);
 //   });
 
+//   // USER LEFT
 //   socket.on("disconnect", () => {
-//     console.log("User disconnected:", socket.id);
+//     console.log("User left:", socket.id);
 
-//     // Inform the other user immediately
-//     socket.broadcast.emit("user-left", socket.id);
-
-//     clients = clients.filter(id => id !== socket.id);
-// });
-
-// });
-
-// // Test route
-// app.get('/', (req, res) => {
-//   res.send("Hello World - Server is running");
-// });
-
-// // Start server
-// server.listen(port, "0.0.0.0", () => {
-//   console.log(`Server running at http://localhost:${port}`);
-// });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// const express = require('express');
-// const http = require('http');
-// const cors = require('cors');
-// const { Server } = require("socket.io");
-
-// // --------------------
-// // Express App Setup
-// // --------------------
-// const app = express();
-// const port = 5000;
-
-// app.use(cors());
-// app.use(express.json());
-
-// // HTTP server (required for Socket.IO)
-// const server = http.createServer(app);
-
-// // --------------------
-// // Socket.IO Setup
-// // --------------------
-// const io = new Server(server, {
-//     cors: {
-//         origin: "*",
-//         methods: ["GET", "POST"]
+//     if (socket.meetingId) {
+//       socket.to(socket.meetingId).emit("user-left", socket.id);
 //     }
+//   });
 // });
 
-// // Store connected clients
-// let clients = []; // { id: socket.id }
-
-// // --------------------
-// // Socket.IO Logic
-// // --------------------
-// io.on("connection", (socket) => {
-//     console.log("User connected:", socket.id);
-//     clients.push(socket.id);
-
-//     // --------------------
-//     // Multi-user Video Call Signaling
-//     // --------------------
-
-//     // New user is ready for call
-//     socket.on("ready-for-call", () => {
-//         // Inform all existing users about this new user
-//         const otherClients = clients.filter(id => id !== socket.id);
-//         otherClients.forEach(clientId => {
-//             io.to(clientId).emit("new-user", socket.id);
-//         });
-//     });
-
-//     // Relay signaling data between peers
-//     socket.on("signal", ({ signal, to }) => {
-//         io.to(to).emit("signal", { signal, from: socket.id });
-//     });
-
-//     // --------------------
-//     // Chat Functionality
-//     // --------------------
-//     socket.on("chatMessage", (msg) => {
-//         io.emit("chat", msg);
-//     });
-
-//     // --------------------
-//     // Disconnect Handling
-//     // --------------------
-//     socket.on("disconnect", () => {
-//         console.log("User disconnected:", socket.id);
-
-//         // Inform all other users immediately
-//         socket.broadcast.emit("user-left", socket.id);
-
-//         // Remove from clients array
-//         clients = clients.filter(id => id !== socket.id);
-//     });
+// server.listen(5000, () => {
+//   console.log("Server running on port 5000");
 // });
-
-// // --------------------
-// // Test Route
-// // --------------------
-// app.get('/', (req, res) => {
-//     res.send("Hello World - Server is running");
-// });
-
-// // --------------------
-// // Start Server
-// // --------------------
-// server.listen(port, "0.0.0.0", () => {
-//     console.log(`Server running at http://localhost:${port}`);
-// });
-
-
-
-
-
-
-
-
-
 
 
 
@@ -230,10 +102,7 @@ app.use(express.json());
 const server = http.createServer(app);
 
 const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-  },
+  cors: { origin: "*", methods: ["GET", "POST"] },
 });
 
 io.on("connection", (socket) => {
@@ -241,44 +110,49 @@ io.on("connection", (socket) => {
 
   socket.meetingId = null;
 
-  // USER JOINS MEETING
-  socket.on("ready-for-call", ({ meetingId }) => {
+  // ------------------------ JOIN MEETING ------------------------
+  socket.on("join-meeting", ({ meetingId }) => {
     socket.meetingId = meetingId;
     socket.join(meetingId);
 
-    console.log(`User ${socket.id} joined meeting ${meetingId}`);
+    console.log(`User ${socket.id} joined ${meetingId}`);
 
-    // Notify others in room
-    socket.to(meetingId).emit("new-user", {
-      newUserId: socket.id,
-      meeting: meetingId,
-    });
+    // notify others
+    socket.to(meetingId).emit("new-user", { userId: socket.id });
   });
 
-  // HANDLE SIGNAL
-  socket.on("signal", ({ signal, to, meeting }) => {
+  // ------------------------ SIGNALING ------------------------
+  socket.on("signal", ({ to, signal }) => {
     io.to(to).emit("signal", {
-      signal,
       from: socket.id,
-      meeting,
+      signal,
     });
   });
 
-  // CHAT
+  // ------------------------ CHAT ------------------------
   socket.on("chatMessage", (msg) => {
     io.emit("chat", msg);
   });
 
-  // USER LEFT
+  // ------------------------ WHITEBOARD ------------------------
+  socket.on("draw", ({ x, y, color, size }) => {
+    if (socket.meetingId) {
+      socket.to(socket.meetingId).emit("draw", { x, y, color, size });
+    }
+  });
+
+  // ------------------------ DISCONNECT ------------------------
   socket.on("disconnect", () => {
     console.log("User left:", socket.id);
 
     if (socket.meetingId) {
-      socket.to(socket.meetingId).emit("user-left", socket.id);
+      socket.to(socket.meetingId).emit("user-left", { userId: socket.id });
     }
   });
 });
 
-server.listen(5000, () => {
-  console.log("Server running on port 5000");
+app.get("/", (req, res) => {
+  res.send("Server working: Chat, Whiteboard, Video, File Sharing");
 });
+
+server.listen(5000, "0.0.0.0", () => console.log("Server running on port 5000"));
