@@ -840,7 +840,7 @@ import { io } from "socket.io-client";
 import SimplePeer from "simple-peer";
 import { FaVideo, FaMicrophone, FaMicrophoneSlash, FaPhoneSlash, FaDesktop } from "react-icons/fa";
 
-const socket = io("http://192.168.32.132:5000");
+const socket = io("https://video2-backend.onrender.com");
 
 // Remote video component
 const RemoteVideo = ({ stream }) => {
