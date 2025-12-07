@@ -155,4 +155,4 @@ app.get("/", (req, res) => {
   res.send("Server working: Chat, Whiteboard, Video, File Sharing");
 });
 
-server.listen(5000, "0.0.0.0", () => console.log("Server running on port 5000"));
+server.listen(https://video2-frontend.onrender.com, () => console.log("Server running on port 5000"));
